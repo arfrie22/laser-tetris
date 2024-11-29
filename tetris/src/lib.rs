@@ -102,69 +102,69 @@ impl CurrentPiece {
     pub fn mask(&self) -> [u16; 4] {
         match self.piece {
             Piece::I => match self.rotation {
-                Rotation::Rotate0 | Rotation::Rotate180 => [0, 0, 0, 0b1111 << self.x],
+                Rotation::Rotate0 | Rotation::Rotate180 => [0b1111 << self.x, 0, 0, 0],
                 Rotation::Rotate90 | Rotation::Rotate270 => {
                     let piece_mask = 0b1 << self.x;
                     [piece_mask, piece_mask, piece_mask, piece_mask]
                 }
             },
             Piece::J => match self.rotation {
-                Rotation::Rotate0 => [0, 0, 0b1 << self.x, 0b111 << self.x],
+                Rotation::Rotate0 => [0b111 << self.x, 0b1 << self.x, 0, 0],
                 Rotation::Rotate90 => {
                     let piece_mask = 0b1 << self.x;
-                    [0, 0b11 << self.x, piece_mask, piece_mask]
+                    [piece_mask, piece_mask, 0b11 << self.x, 0]
                 }
-                Rotation::Rotate180 => [0, 0, 0b111 << self.x, 0b1 << self.x + 2],
+                Rotation::Rotate180 => [0b1 << self.x + 2, 0b111 << self.x, 0, 0],
                 Rotation::Rotate270 => {
                     let piece_mask = 0b1 << self.x + 1;
-                    [0, piece_mask, piece_mask, 0b11 << self.x]
+                    [0b11 << self.x, piece_mask, piece_mask, 0]
                 }
             },
             Piece::L => match self.rotation {
-                Rotation::Rotate0 => [0, 0, 0b1 << self.x + 2, 0b111 << self.x],
+                Rotation::Rotate0 => [0b111 << self.x, 0b1 << self.x + 2, 0, 0],
                 Rotation::Rotate90 => {
                     let piece_mask = 0b1 << self.x;
-                    [0, piece_mask, piece_mask, 0b11 << self.x]
+                    [0b11 << self.x, piece_mask, piece_mask, 0]
                 }
-                Rotation::Rotate180 => [0, 0, 0b111 << self.x, 0b1 << self.x],
+                Rotation::Rotate180 => [0b1 << self.x, 0b111 << self.x, 0, 0],
                 Rotation::Rotate270 => {
                     let piece_mask = 0b1 << self.x + 1;
-                    [0, 0b11 << self.x, piece_mask, piece_mask]
+                    [piece_mask, piece_mask, 0b11 << self.x, 0]
                 }
             },
             Piece::O => {
                 let piece_mask = 0b11 << self.x;
-                [0, 0, piece_mask, piece_mask]
+                [piece_mask, piece_mask, 0, 0]
             }
             Piece::S => match self.rotation {
                 Rotation::Rotate0 | Rotation::Rotate180 => {
-                    [0, 0, 0b11 << self.x + 1, 0b11 << self.x]
+                    [0b11 << self.x, 0b11 << self.x + 1, 0, 0]
                 }
                 Rotation::Rotate90 | Rotation::Rotate270 => {
-                    [0, 0b1 << self.x, 0b11 << self.x, 0b1 << self.x + 1]
+                    [0b1 << self.x + 1, 0b11 << self.x, 0b1 << self.x, 0]
                 }
             },
             Piece::T => match self.rotation {
-                Rotation::Rotate0 => [0, 0, 0b1 << self.x + 1, 0b111 << self.x],
+                Rotation::Rotate0 => [0b111 << self.x, 0b1 << self.x + 1, 0, 0],
                 Rotation::Rotate90 => {
                     let piece_mask = 0b1 << self.x;
-                    [0, piece_mask, 0b11 << self.x, piece_mask]
+                    [piece_mask, 0b11 << self.x, piece_mask, 0]
                 }
-                Rotation::Rotate180 => [0, 0, 0b111 << self.x, 0b1 << self.x + 1],
+                Rotation::Rotate180 => [0b1 << self.x + 1, 0b111 << self.x, 0, 0],
                 Rotation::Rotate270 => {
                     let piece_mask = 0b1 << self.x + 1;
-                    [0, piece_mask, 0b11 << self.x, piece_mask]
+                    [piece_mask, 0b11 << self.x, piece_mask, 0]
                 }
             },
             Piece::Z => match self.rotation {
                 Rotation::Rotate0 | Rotation::Rotate180 => {
-                    [0, 0, 0b11 << self.x, 0b11 << self.x + 1]
+                    [0b11 << self.x + 1, 0b11 << self.x, 0, 0]
                 }
                 Rotation::Rotate90 | Rotation::Rotate270 => {
-                    [0, 0b1 << self.x + 1, 0b11 << self.x, 0b1 << self.x]
+                    [0b1 << self.x, 0b11 << self.x, 0b1 << self.x + 1, 0]
                 }
             },
-        }
+        }        
     }
 
     pub fn color(&self) -> (u8, u8, u8) {
@@ -214,13 +214,20 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         let mut g = Game {
             current_piece: piece.clone(),
             ghost_piece: piece,
-            next_pieces: [rng.get_next_piece(), rng.get_next_piece(), rng.get_next_piece(), rng.get_next_piece(), rng.get_next_piece(), rng.get_next_piece()],
+            next_pieces: [
+                rng.get_next_piece(),
+                rng.get_next_piece(),
+                rng.get_next_piece(),
+                rng.get_next_piece(),
+                rng.get_next_piece(),
+                rng.get_next_piece(),
+            ],
             // Make it so outside the playfeild x >= 10 is masked as something there
             playfield_mask: [0b0000000000111111; 40],
             playfield_colors: [[(0, 0, 0); 10]; 40],
             randomizer: rng,
             rotation: rot,
-            ruleset: Ruleset {  },
+            ruleset: Ruleset {},
             held_piece: None,
         };
 
