@@ -164,7 +164,7 @@ impl CurrentPiece {
                     [0b1 << self.x, 0b11 << self.x, 0b1 << self.x + 1, 0]
                 }
             },
-        }        
+        }
     }
 
     pub fn color(&self) -> (u8, u8, u8) {
@@ -206,6 +206,9 @@ where
     rotation: ROT,
     ruleset: Ruleset,
     held_piece: Option<Piece>,
+    gravity: f32,
+    movement: f32,
+    lock_ticks: u32,
 }
 
 impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
@@ -229,6 +232,9 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             rotation: rot,
             ruleset: Ruleset {},
             held_piece: None,
+            gravity: 1.0 / 64.0,
+            movement: 0.0,
+            lock_ticks: 0,
         };
 
         g.update_ghost();
@@ -274,6 +280,13 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         }
     }
 
+    fn new_piece(&mut self, piece: Piece) {
+        self.current_piece = piece.spawn();
+        self.movement = 0.0;
+        self.lock_ticks = 0;
+        self.update_ghost();
+    }
+
     fn get_next_piece(&mut self) -> Piece {
         let next = self.next_pieces[0];
         for i in 0..self.next_pieces.len() - 1 {
@@ -303,6 +316,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             if self.current_piece.collides(&self.playfield_mask) {
                 self.current_piece.x += 1;
             } else {
+                self.lock_ticks = 0;
                 self.update_ghost();
             }
         }
@@ -314,38 +328,52 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             if self.current_piece.collides(&self.playfield_mask) {
                 self.current_piece.x -= 1;
             } else {
+                self.lock_ticks = 0;
                 self.update_ghost();
             }
         }
     }
 
     pub fn rotate_left(&mut self) {
-        self.current_piece = self
+        if let Some(rot) = self
             .rotation
-            .rotate_left(&self.current_piece, &self.playfield_mask);
-        self.update_ghost();
+            .rotate_left(&self.current_piece, &self.playfield_mask)
+        {
+            self.current_piece = rot;
+            self.lock_ticks = 0;
+            self.update_ghost();
+        }
     }
 
     pub fn rotate_right(&mut self) {
-        self.current_piece = self
+        if let Some(rot) = self
             .rotation
-            .rotate_right(&self.current_piece, &self.playfield_mask);
-        self.update_ghost();
+            .rotate_right(&self.current_piece, &self.playfield_mask)
+        {
+            self.current_piece = rot;
+            self.lock_ticks = 0;
+            self.update_ghost();
+        }
     }
 
     pub fn hard_drop(&mut self) {
         let ghost = self.ghost_piece.clone();
         self.lock_piece(&ghost);
-        self.current_piece = self.get_next_piece().spawn();
-        self.update_ghost();
+        let piece = self.get_next_piece();
+        self.new_piece(piece);
     }
 
     pub fn update(&mut self) {
-        if self.current_piece.y > 0 {
-            self.current_piece.y -= 1;
-            if self.current_piece.collides(&self.playfield_mask) {
-                self.current_piece.y += 1;
+        self.movement += self.gravity;
+        while self.movement > 1.0 {
+            if self.current_piece.y > 0 {
+                self.current_piece.y -= 1;
+                if self.current_piece.collides(&self.playfield_mask) {
+                    self.current_piece.y += 1;
+                }
             }
+
+            self.movement -= 1.0;
         }
     }
 }

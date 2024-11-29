@@ -1,14 +1,14 @@
 use crate::{CurrentPiece, Piece, PlayfieldMask, Rotation};
 
 pub trait Rotate {
-    fn rotate_left(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> CurrentPiece;
-    fn rotate_right(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> CurrentPiece;
+    fn rotate_left(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> Option<CurrentPiece>;
+    fn rotate_right(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> Option<CurrentPiece>;
 }
 
 pub struct SuperRotationSystem {}
 
 impl SuperRotationSystem {
-    fn rotate(&self, piece: &CurrentPiece, playfield: &PlayfieldMask, clockwise: bool) -> CurrentPiece {
+    fn rotate(&self, piece: &CurrentPiece, playfield: &PlayfieldMask, clockwise: bool) -> Option<CurrentPiece> {
         // JLSTZ
         // 0->R     (0, 0)     (-1, 0)     (-1, +1)     (0, -2)     (-1, -2)
         // R->2     (0, 0)     (+1, 0)     (+1, -1)     (0, +2)     (+1, +2)
@@ -147,21 +147,21 @@ impl SuperRotationSystem {
                 new_position.x = x_tmp as u32;
                 new_position.y = y_tmp as u32;
                 if !new_position.collides(playfield) {
-                    return new_position;
+                    return Some(new_position);
                 }
             }
         }
 
-        piece.clone()
+        None
     }
 }
 
 impl Rotate for SuperRotationSystem {
-    fn rotate_left(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> CurrentPiece {
+    fn rotate_left(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> Option<CurrentPiece> {
         self.rotate(piece, playfield, false)
     }
 
-    fn rotate_right(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> CurrentPiece {
+    fn rotate_right(&self, piece: &CurrentPiece, playfield: &PlayfieldMask) -> Option<CurrentPiece> {
         self.rotate(piece, playfield, true)
     }
 }

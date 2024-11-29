@@ -42,9 +42,6 @@ fn main() -> Result<(), Error> {
     let rot = SuperRotationSystem{};
     let rng = RandomGenerator::new(thread_rng());
     let mut game = Game::new(rng, rot);
-    game.update();
-    game.update();
-    game.update();
 
     let res = event_loop.run(|event, elwt| {
         // Draw the current frame
@@ -120,7 +117,7 @@ fn main() -> Result<(), Error> {
             }
 
             // Update internal state and request a redraw
-            // game.update();
+            game.update();
             window.request_redraw();
         }
     });
