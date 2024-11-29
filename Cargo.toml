@@ -1,0 +1,4 @@
+[workspace]
+members = ["common", "demo", "rp2040", "tetris"]
+resolver = "2"
+
