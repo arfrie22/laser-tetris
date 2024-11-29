@@ -173,15 +173,15 @@ impl CurrentPiece {
 
     pub fn collides(&self, playfield: &PlayfieldMask) -> bool {
         if self.y >= 40 - 4 {
-            false
+            true
         } else {
             let mask = self.mask();
             for i in 0..4 {
                 if mask[i] & playfield[(self.y as usize) + i] != 0 {
-                    return false;
+                    return true;
                 }
             }
-            true
+            false
         }
     }
 }
@@ -223,7 +223,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 rng.get_next_piece(),
             ],
             // Make it so outside the playfeild x >= 10 is masked as something there
-            playfield_mask: [0b0000000000111111; 40],
+            playfield_mask: [0b1111110000000000; 40],
             playfield_colors: [[(0, 0, 0); 10]; 40],
             randomizer: rng,
             rotation: rot,
@@ -253,8 +253,23 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         for i in (0..=self.current_piece.y).rev() {
             self.ghost_piece.y = i;
             if self.ghost_piece.collides(&self.playfield_mask) {
-                self.ghost_piece.y -= 1;
+                self.ghost_piece.y += 1;
                 break;
+            }
+        }
+    }
+
+    fn lock_piece(&mut self, piece: &CurrentPiece) {
+        let c = piece.color();
+        for (i, m) in piece.mask().iter().enumerate() {
+            let y = piece.y as usize + i;
+            self.playfield_mask[y] |= *m;
+            if y < 40 {
+                for x in 0..10 {
+                    if ((1 << x) & *m) != 0 {
+                        self.playfield_colors[y][x] = c;
+                    }
+                }
             }
         }
     }
@@ -315,6 +330,13 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         self.current_piece = self
             .rotation
             .rotate_right(&self.current_piece, &self.playfield_mask);
+        self.update_ghost();
+    }
+
+    pub fn hard_drop(&mut self) {
+        let ghost = self.ghost_piece.clone();
+        self.lock_piece(&ghost);
+        self.current_piece = self.get_next_piece().spawn();
         self.update_ghost();
     }
 

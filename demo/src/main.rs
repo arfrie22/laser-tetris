@@ -57,7 +57,7 @@ fn main() -> Result<(), Error> {
 
             for x in 0..10 {
                 for y in 0..20 {
-                    draw_pixel(frame, x,  y, (0, 0, 0));
+                    draw_pixel(frame, x,  y, game.board()[y as usize][x as usize]);
                 }
             }
 
@@ -104,6 +104,10 @@ fn main() -> Result<(), Error> {
 
             if input.key_pressed(KeyCode::ArrowRight) {
                 game.move_right();
+            }
+
+            if input.key_pressed(KeyCode::Space) {
+                game.hard_drop();
             }
 
             // Resize the window
