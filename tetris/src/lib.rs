@@ -241,7 +241,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     pub fn ghost_piece(&self) -> &CurrentPiece {
-        &self.current_piece
+        &self.ghost_piece
     }
 
     pub fn board(&self) -> &[[(u8, u8, u8); 10]; 40] {
@@ -250,7 +250,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     fn update_ghost(&mut self) {
         self.ghost_piece = self.current_piece.clone();
-        for i in self.current_piece.y..=0 {
+        for i in (0..=self.current_piece.y).rev() {
             self.ghost_piece.y = i;
             if self.ghost_piece.collides(&self.playfield_mask) {
                 self.ghost_piece.y -= 1;
@@ -267,8 +267,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
         self.next_pieces[self.next_pieces.len() - 1] = self.randomizer.get_next_piece();
 
-        // next
-        Piece::Z
+        next
     }
 
     pub fn hold(&mut self) {

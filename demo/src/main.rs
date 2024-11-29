@@ -61,10 +61,15 @@ fn main() -> Result<(), Error> {
                 }
             }
 
+            let p = game.ghost_piece();
+            let mut c = p.color();
+            c.0 /= 2;
+            c.1 /= 2;
+            c.2 /= 2;
+            draw_mask(frame, p.y(), p.mask(), c);
+
             let p = game.current_piece();
-            let mask = p.mask();
-            let c = p.color();
-            draw_mask(frame, p.y(), mask, c);
+            draw_mask(frame, p.y(), p.mask(), p.color());
             if let Err(err) = pixels.render() {
                 log_error("pixels.render", err);
                 elwt.exit();
