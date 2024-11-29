@@ -36,7 +36,7 @@ fn main() -> Result<(), Error> {
     let mut pixels = {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new((WIDTH * PIXEL_SIZE), (HEIGHT * PIXEL_SIZE), surface_texture)?
+        Pixels::new(WIDTH * PIXEL_SIZE,HEIGHT * PIXEL_SIZE, surface_texture)?
     };
 
     let rot = SuperRotationSystem{};
@@ -54,22 +54,17 @@ fn main() -> Result<(), Error> {
         } = event
         {
             let frame = pixels.frame_mut();
+
+            for x in 0..10 {
+                for y in 0..20 {
+                    draw_pixel(frame, x,  y, (0, 0, 0));
+                }
+            }
+
             let p = game.current_piece();
             let mask = p.mask();
             let c = p.color();
-            draw_pixel(frame, 0, 0, c);
-            for (i, m) in mask.iter().enumerate() {
-                let y = p.y() + i as u32;
-                if y < 20 {
-                    println!("m: {}", *m);
-                    for x in 0..10 {
-                        if ((1 << x) & *m) != 0 {
-                            println!("x: {}, y: {}", x, y);
-                            draw_pixel(frame, x, y, c);
-                        }
-                    }
-                }
-            }
+            draw_mask(frame, p.y(), mask, c);
             if let Err(err) = pixels.render() {
                 log_error("pixels.render", err);
                 elwt.exit();
@@ -131,6 +126,7 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
 }
 
 fn draw_pixel(frame: &mut [u8], x: u32, y: u32, color: (u8, u8, u8)) {
+    let y = HEIGHT - y - 1;
     let mut colors = [0; (PIXEL_SIZE as usize) * 4];
     for pixel in colors.chunks_exact_mut(4) {
         let rgba = [color.0, color.1, color.2, 255];
@@ -140,5 +136,18 @@ fn draw_pixel(frame: &mut [u8], x: u32, y: u32, color: (u8, u8, u8)) {
     for i in 0..PIXEL_SIZE {
         let start = (((WIDTH * (i + (y * PIXEL_SIZE))) + x) * 4 * PIXEL_SIZE) as usize;
         frame[start..start + ((PIXEL_SIZE as usize) * 4)].copy_from_slice(&colors);
+    }
+}
+
+fn draw_mask(frame: &mut [u8], y: u32, mask: [u16; 4], color: (u8, u8, u8)) {
+    for (i, m) in mask.iter().enumerate() {
+        let y = y + i as u32;
+        if y < 20 {
+            for x in 0..10 {
+                if ((1 << x) & *m) != 0 {
+                    draw_pixel(frame, x, y, color);
+                }
+            }
+        }
     }
 }

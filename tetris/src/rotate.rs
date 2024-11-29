@@ -143,7 +143,7 @@ impl SuperRotationSystem {
             let x_tmp = x + (test.0 * mult);
             let y_tmp = y + (test.1 * mult);
 
-            if x_tmp > 0 && y_tmp > 0 {
+            if x_tmp >= 0 && y_tmp >= 0 {
                 new_position.x = x_tmp as u32;
                 new_position.y = y_tmp as u32;
                 if !new_position.collides(playfield) {

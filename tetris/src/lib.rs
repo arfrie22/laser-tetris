@@ -68,7 +68,7 @@ impl Rotation {
             Rotation::Rotate0 => Rotation::Rotate90,
             Rotation::Rotate90 => Rotation::Rotate180,
             Rotation::Rotate180 => Rotation::Rotate270,
-            Rotation::Rotate270 => Rotation::Rotate90,
+            Rotation::Rotate270 => Rotation::Rotate0,
         }
     }
 
@@ -284,10 +284,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     pub fn move_left(&mut self) {
-        if self.current_piece.x < 10 {
-            self.current_piece.x += 1;
+        if self.current_piece.x > 0 {
+            self.current_piece.x -= 1;
             if self.current_piece.collides(&self.playfield_mask) {
-                self.current_piece.x -= 1;
+                self.current_piece.x += 1;
             } else {
                 self.update_ghost();
             }
@@ -295,10 +295,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     pub fn move_right(&mut self) {
-        if self.current_piece.x > 0 {
-            self.current_piece.x -= 1;
+        if self.current_piece.x < 10 {
+            self.current_piece.x += 1;
             if self.current_piece.collides(&self.playfield_mask) {
-                self.current_piece.x += 1;
+                self.current_piece.x -= 1;
             } else {
                 self.update_ghost();
             }
