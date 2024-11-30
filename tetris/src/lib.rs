@@ -91,6 +91,10 @@ pub struct CurrentPiece {
 }
 
 impl CurrentPiece {
+    pub fn new(piece: Piece, x: u32, y: u32, rotation: Rotation) -> Self {
+        CurrentPiece { piece, x, y, rotation }
+    }
+
     pub fn x(&self) -> u32 {
         self.x
     }
@@ -281,6 +285,14 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     pub fn ghost_piece(&self) -> &CurrentPiece {
         &self.ghost_piece
+    }
+
+    pub fn held_piece(&self) -> Option<Piece> {
+        self.held_piece
+    }
+
+    pub fn next_pieces(&self) -> [Piece; 6] {
+        self.next_pieces
     }
 
     pub fn board(&self) -> &[[(u8, u8, u8); 10]; 40] {
