@@ -189,7 +189,18 @@ impl CurrentPiece {
 pub type PlayfieldMask = [u16; 40];
 
 #[derive(Debug, Clone)]
-pub struct Ruleset {}
+pub struct Ruleset {
+    das_delay: u32,
+    das_gravity: f32,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub enum HeldDirection {
+    #[default]
+    None,
+    Left,
+    Right,
+}
 
 #[derive(Debug, Clone)]
 pub struct Game<RNG, ROT>
@@ -206,9 +217,11 @@ where
     rotation: ROT,
     ruleset: Ruleset,
     held_piece: Option<Piece>,
+    hold_lock: bool,
     gravity: f32,
     movement: f32,
     lock_ticks: u32,
+    held_direction: HeldDirection,
 }
 
 impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
@@ -230,11 +243,18 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             playfield_colors: [[(0, 0, 0); 10]; 40],
             randomizer: rng,
             rotation: rot,
-            ruleset: Ruleset {},
+            ruleset: Ruleset {
+                // 50 ms (3 ticks /60 fps = 1/20 s)
+                das_delay: 3,
+                // 1 Tile / Second
+                das_gravity: 1.0,
+            },
             held_piece: None,
+            hold_lock: false,
             gravity: 1.0 / 64.0,
             movement: 0.0,
             lock_ticks: 0,
+            held_direction: HeldDirection::default(),
         };
 
         g.update_ghost();
@@ -278,6 +298,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 }
             }
         }
+
+        let piece = self.get_next_piece();
+        self.new_piece(piece);
+        self.hold_lock = false;
     }
 
     fn new_piece(&mut self, piece: Piece) {
@@ -299,15 +323,19 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     pub fn hold(&mut self) {
-        let new_piece = if let Some(held) = self.held_piece {
-            held.spawn()
-        } else {
-            self.get_next_piece().spawn()
-        };
+        if !self.hold_lock {
+            let new_piece = if let Some(held) = self.held_piece {
+                held.spawn()
+            } else {
+                self.get_next_piece().spawn()
+            };
 
-        self.held_piece = Some(self.current_piece.piece);
-        self.current_piece = new_piece;
-        self.update_ghost();
+            self.held_piece = Some(self.current_piece.piece);
+            self.current_piece = new_piece;
+            self.update_ghost();
+
+            self.hold_lock = true;
+        }
     }
 
     pub fn move_left(&mut self) {
@@ -359,8 +387,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     pub fn hard_drop(&mut self) {
         let ghost = self.ghost_piece.clone();
         self.lock_piece(&ghost);
-        let piece = self.get_next_piece();
-        self.new_piece(piece);
+    }
+
+    pub fn hold_left(&mut self) {
+        
     }
 
     pub fn update(&mut self) {

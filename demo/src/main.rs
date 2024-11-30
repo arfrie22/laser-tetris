@@ -86,6 +86,10 @@ fn main() -> Result<(), Error> {
                 game.rotate_left();
             }
 
+            if input.key_pressed(KeyCode::KeyX) {
+                game.hold();
+            }
+
             if input.key_pressed(KeyCode::ArrowUp) {
                 game.rotate_right();
             }
