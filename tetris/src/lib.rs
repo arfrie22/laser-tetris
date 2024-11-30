@@ -192,9 +192,10 @@ pub type PlayfieldMask = [u16; 40];
 pub struct Ruleset {
     das_delay: u32,
     das_gravity: f32,
+    drop_gravity: f32,
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum HeldDirection {
     #[default]
     None,
@@ -221,7 +222,12 @@ where
     gravity: f32,
     movement: f32,
     lock_ticks: u32,
+    das_movement: f32,
+    das_ticks: u32,
+    left_held: bool,
+    right_held: bool,
     held_direction: HeldDirection,
+    drop_held: bool,
 }
 
 impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
@@ -244,10 +250,12 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             randomizer: rng,
             rotation: rot,
             ruleset: Ruleset {
-                // 50 ms (3 ticks /60 fps = 1/20 s)
-                das_delay: 3,
+                // 500 ms (30 ticks / 60 fps = 1/2 s)
+                das_delay: 30,
                 // 1 Tile / Second
                 das_gravity: 1.0,
+                // 1 Tile / Second
+                drop_gravity: 1.0,
             },
             held_piece: None,
             hold_lock: false,
@@ -255,6 +263,11 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             movement: 0.0,
             lock_ticks: 0,
             held_direction: HeldDirection::default(),
+            left_held: false,
+            right_held: false,
+            drop_held: false,
+            das_movement: 0.0,
+            das_ticks: 0,
         };
 
         g.update_ghost();
@@ -389,12 +402,52 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         self.lock_piece(&ghost);
     }
 
-    pub fn hold_left(&mut self) {
-        
+    pub fn set_drop(&mut self, state: bool) {
+        self.drop_held = state;
+    }
+
+    pub fn set_left(&mut self, state: bool) {
+        if self.held_direction != HeldDirection::Left {
+            self.move_left();
+            self.das_ticks = 0;
+            self.das_movement = 0.0;
+            self.left_held = state;
+            self.held_direction = if state {
+                HeldDirection::Left
+            } else {
+                if self.right_held {
+                    HeldDirection::Right
+                } else {
+                    HeldDirection::None
+                }
+            };
+        }
+    }
+
+    pub fn set_right(&mut self, state: bool) {
+        if self.held_direction != HeldDirection::Right {
+            self.move_right();
+            self.das_ticks = 0;
+            self.das_movement = 0.0;
+            self.right_held = state;
+            self.held_direction = if state {
+                HeldDirection::Right
+            } else {
+                if self.left_held {
+                    HeldDirection::Left
+                } else {
+                    HeldDirection::None
+                }
+            };
+        }
     }
 
     pub fn update(&mut self) {
-        self.movement += self.gravity;
+        let mut g = self.gravity;
+        if self.drop_held {
+            g = g.max(self.ruleset.drop_gravity)
+        }
+        self.movement += g;
         while self.movement > 1.0 {
             if self.current_piece.y > 0 {
                 self.current_piece.y -= 1;
@@ -404,6 +457,24 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             }
 
             self.movement -= 1.0;
+        }
+
+        if self.held_direction != HeldDirection::None {
+            if self.das_ticks < self.ruleset.das_delay {
+                self.das_ticks += 1;
+
+            } else {
+                self.das_movement += self.ruleset.das_gravity;
+                while self.das_movement > 1.0 {
+                    match &self.held_direction {
+                        HeldDirection::None => unreachable!(),
+                        HeldDirection::Left => {self.move_left()},
+                        HeldDirection::Right => {self.move_right()},
+                    }
+        
+                    self.das_movement -= 1.0;
+                }
+            }
         }
     }
 }

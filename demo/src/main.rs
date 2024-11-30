@@ -94,17 +94,22 @@ fn main() -> Result<(), Error> {
                 game.rotate_right();
             }
 
-            if input.key_pressed(KeyCode::ArrowDown) {
-                // Drop
-                // game.drop();
+            if input.key_held(KeyCode::ArrowDown) {
+                game.set_drop(true);
+            } else if input.key_released(KeyCode::ArrowDown) {
+                game.set_drop(false);
             }
 
-            if input.key_pressed(KeyCode::ArrowLeft) {
-                game.move_left();
+            if input.key_held(KeyCode::ArrowLeft) {
+                game.set_left(true);
+            } else if input.key_released(KeyCode::ArrowLeft) {
+                game.set_left(false);
             }
 
-            if input.key_pressed(KeyCode::ArrowRight) {
-                game.move_right();
+            if input.key_held(KeyCode::ArrowRight) {
+                game.set_right(true);
+            } else if input.key_released(KeyCode::ArrowRight) {
+                game.set_right(false);
             }
 
             if input.key_pressed(KeyCode::Space) {
