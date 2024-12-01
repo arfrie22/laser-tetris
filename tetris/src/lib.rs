@@ -1,3 +1,5 @@
+#![no_std]
+
 use random::Randomizer;
 use rotate::Rotate;
 

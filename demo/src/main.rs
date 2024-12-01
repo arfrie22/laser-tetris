@@ -42,6 +42,15 @@ fn main() -> Result<(), Error> {
     let rot = SuperRotationSystem{};
     let rng = RandomGenerator::new(thread_rng());
     let mut game = Game::new(rng, rot);
+    {
+        let frame = pixels.frame_mut();
+        for l in frame.chunks_exact_mut(4) {
+            l[0] = 64;
+            l[1] = 64;
+            l[2] = 64;
+            l[3] = 255;
+        }
+    }
 
     let res = event_loop.run(|event, elwt| {
         // Draw the current frame
@@ -79,14 +88,13 @@ fn main() -> Result<(), Error> {
                 draw_mask(frame, 24, 0, 16, p.mask(), p.color());
             }
 
-            for x in 0..4 {
-                for y in 0..24 {
-                    draw_pixel(frame, 19 + x, y, (0, 0, 0));
-                }
-            }
-
             for (i, piece) in game.next_pieces().iter().enumerate() {
                 let p = CurrentPiece::new(*piece, 0, 0, tetris::Rotation::Rotate0);
+                for x in 0..4 {
+                    for y in 0..2 {
+                        draw_pixel(frame, 19 + x, 20 - (3 * i as u32) + y, (0, 0, 0));
+                    }
+                }
                 draw_mask(frame, 24, 19, 20 - (3 * i as u32), p.mask(), p.color());
             }
 
