@@ -269,8 +269,8 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             ruleset: Ruleset {
                 // 300 ms (18 ticks / 60 fps = 3/10 s)
                 das_delay: 18,
-                // 1 Tile / Tick
-                das_gravity: 2.0,
+                // 1 Tile / 2 Tick
+                das_gravity: 0.5,
                 // 20x Normal Drop Speed
                 drop_gravity_multipler: 20.0,
                 // 1 s (60 ticks / 60 fps = 1 s)
