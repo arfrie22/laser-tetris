@@ -1,4 +1,4 @@
-#![no_std]
+//#![no_std]
 
 use random::Randomizer;
 use rotate::Rotate;
@@ -201,6 +201,8 @@ pub struct Ruleset {
     drop_gravity_multipler: f32,
     lock_delay: u32,
     lock_resets: u32,
+    line_clear_constant: u32,
+    line_clear_coeff: u32,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -229,6 +231,8 @@ where
     held_piece: Option<Piece>,
     hold_lock: bool,
     level: u32,
+    line_clear_total: u32,
+    line_clear_count: u32,
     gravity: f32,
     movement: f32,
     lock_ticks: u32,
@@ -273,11 +277,17 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 lock_delay: 60,
                 // 25 Moves to reset lock delay
                 lock_resets: 25,
+                // 10 / 0 for fixed and 5 / 5 for variable
+                // line_clear_constant: 10,
+                line_clear_constant: 10,
+                line_clear_coeff: 0,
             },
             held_piece: None,
             hold_lock: false,
             gravity: 0.0,
             level: 0,
+            line_clear_total: 0,
+            line_clear_count: 0,
             movement: 0.0,
             lock_ticks: 0,
             lock_tries: 0,
@@ -321,7 +331,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     fn update_gravity(&mut self) {
-        self.gravity = ((0.8 - ((self.level as f32) * 0.007)).powi(self.level as i32)) / 60.0;
+        self.gravity = 1.0 / (((0.8 - ((self.level as f32) * 0.007)).powi(self.level as i32)) * 60.0);
     }
 
     fn update_ghost(&mut self) {
@@ -501,6 +511,17 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     pub fn update(&mut self) {
         if self.line_clears.1 > 0 {
+            self.line_clear_count += self.line_clears.1 as u32;
+            self.line_clear_total += self.line_clears.1 as u32;
+            let limit = self.ruleset.line_clear_constant + (self.level * self.ruleset.line_clear_coeff);
+            println!("gravtiy: {}, limit: {}, count: {}", self.gravity, limit, self.line_clear_count);
+            if self.line_clear_count >= limit {
+                self.line_clear_count = 0;
+                self.level += 1;
+                self.update_gravity();
+                println!("gravtiy: {}", self.gravity);
+            }
+
             for i in (0..self.line_clears.1).rev() {
                 let l = self.line_clears.0[i] as usize;
                 for i in l..39 {
@@ -572,6 +593,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 // Full line
                 self.line_clears.0[self.line_clears.1] = i as u32;
                 self.line_clears.1 += 1;
+
+                if self.line_clears.1 >= 4 {
+                    break;
+                }
             }
         }
     }
