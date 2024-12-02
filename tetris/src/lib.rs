@@ -198,7 +198,7 @@ pub type PlayfieldMask = [u16; 40];
 pub struct Ruleset {
     das_delay: u32,
     das_gravity: f32,
-    drop_gravity: f32,
+    drop_gravity_multipler: f32,
     lock_delay: u32,
     lock_resets: u32,
 }
@@ -228,6 +228,7 @@ where
     ruleset: Ruleset,
     held_piece: Option<Piece>,
     hold_lock: bool,
+    level: u32,
     gravity: f32,
     movement: f32,
     lock_ticks: u32,
@@ -238,6 +239,7 @@ where
     right_held: bool,
     held_direction: HeldDirection,
     drop_held: bool,
+    line_clears: ([u32; 4], usize),
 }
 
 impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
@@ -261,12 +263,12 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             randomizer: rng,
             rotation: rot,
             ruleset: Ruleset {
-                // 500 ms (30 ticks / 60 fps = 1/2 s)
-                das_delay: 30,
-                // 1 Tile / Second
-                das_gravity: 1.0,
-                // 1 Tile / Second
-                drop_gravity: 1.0,
+                // 300 ms (18 ticks / 60 fps = 3/10 s)
+                das_delay: 18,
+                // 1 Tile / Tick
+                das_gravity: 2.0,
+                // 20x Normal Drop Speed
+                drop_gravity_multipler: 20.0,
                 // 1 s (60 ticks / 60 fps = 1 s)
                 lock_delay: 60,
                 // 25 Moves to reset lock delay
@@ -274,7 +276,8 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             },
             held_piece: None,
             hold_lock: false,
-            gravity: 1.0 / 64.0,
+            gravity: 0.0,
+            level: 0,
             movement: 0.0,
             lock_ticks: 0,
             lock_tries: 0,
@@ -284,9 +287,11 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             drop_held: false,
             das_movement: 0.0,
             das_ticks: 0,
+            line_clears: ([0, 0, 0, 0], 0),
         };
 
         g.update_ghost();
+        g.update_gravity();
 
         g
     }
@@ -313,6 +318,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     pub fn board(&self) -> &[[(u8, u8, u8); 10]; 40] {
         &self.playfield_colors
+    }
+
+    fn update_gravity(&mut self) {
+        self.gravity = ((0.8 - ((self.level as f32) * 0.007)).powi(self.level as i32)) / 60.0;
     }
 
     fn update_ghost(&mut self) {
@@ -491,10 +500,32 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     pub fn update(&mut self) {
+        if self.line_clears.1 > 0 {
+            for i in (0..self.line_clears.1).rev() {
+                let l = self.line_clears.0[i] as usize;
+                for i in l..39 {
+                    self.playfield_mask[i] = self.playfield_mask[i+1];
+                    for c in 0..10 {
+                        self.playfield_colors[i][c] = self.playfield_colors[i+1][c];
+                    }
+                }
+
+                self.playfield_mask[39] = 0b1111110000000000;
+                for c in 0..10 {
+                    self.playfield_colors[39][c] = (0, 0, 0);
+                }
+            }
+
+            self.line_clears.1 = 0;
+            return;
+        }
+
+
         let mut g = self.gravity;
         if self.drop_held {
-            g = g.max(self.ruleset.drop_gravity)
+            g *= self.ruleset.drop_gravity_multipler;
         }
+        
         self.movement += g;
         while self.movement > 1.0 {
             if self.current_piece.y > 0 {
@@ -535,6 +566,13 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             self.lock_piece(&piece);
         }
 
-        // Check tetris
+        // Check line clears
+        for (i, l) in self.playfield_mask.iter().enumerate() {
+            if !(*l) == 0 {
+                // Full line
+                self.line_clears.0[self.line_clears.1] = i as u32;
+                self.line_clears.1 += 1;
+            }
+        }
     }
 }
