@@ -159,6 +159,12 @@ fn main() -> Result<(), Error> {
             // Update internal state and request a redraw
             game.update();
             window.request_redraw();
+
+            if !game.running() {
+                println!("done");
+                elwt.exit();
+                return;
+            }
         }
     });
     res.map_err(|e| Error::UserDefined(Box::new(e)))

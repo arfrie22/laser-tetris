@@ -199,6 +199,8 @@ pub struct Ruleset {
     das_delay: u32,
     das_gravity: f32,
     drop_gravity: f32,
+    lock_delay: u32,
+    lock_resets: u32,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -215,6 +217,7 @@ where
     RNG: Randomizer,
     ROT: Rotate,
 {
+    game_ended: bool,
     current_piece: CurrentPiece,
     ghost_piece: CurrentPiece,
     next_pieces: [Piece; 6],
@@ -228,6 +231,7 @@ where
     gravity: f32,
     movement: f32,
     lock_ticks: u32,
+    lock_tries: u32,
     das_movement: f32,
     das_ticks: u32,
     left_held: bool,
@@ -240,6 +244,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     pub fn new(mut rng: RNG, rot: ROT) -> Game<RNG, ROT> {
         let piece = rng.get_next_piece().spawn();
         let mut g = Game {
+            game_ended: false,
             current_piece: piece.clone(),
             ghost_piece: piece,
             next_pieces: [
@@ -262,12 +267,17 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 das_gravity: 1.0,
                 // 1 Tile / Second
                 drop_gravity: 1.0,
+                // 1 s (60 ticks / 60 fps = 1 s)
+                lock_delay: 60,
+                // 25 Moves to reset lock delay
+                lock_resets: 25,
             },
             held_piece: None,
             hold_lock: false,
             gravity: 1.0 / 64.0,
             movement: 0.0,
             lock_ticks: 0,
+            lock_tries: 0,
             held_direction: HeldDirection::default(),
             left_held: false,
             right_held: false,
@@ -279,6 +289,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         g.update_ghost();
 
         g
+    }
+
+    pub fn running(&self) -> bool {
+        !self.game_ended
     }
 
     pub fn current_piece(&self) -> &CurrentPiece {
@@ -313,6 +327,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
     }
 
     fn lock_piece(&mut self, piece: &CurrentPiece) {
+        if piece.y > 20 {
+            self.game_ended = true;
+        }
+
         let c = piece.color();
         for (i, m) in piece.mask().iter().enumerate() {
             let y = piece.y as usize + i;
@@ -331,13 +349,6 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         self.hold_lock = false;
     }
 
-    fn new_piece(&mut self, piece: Piece) {
-        self.current_piece = piece.spawn();
-        self.movement = 0.0;
-        self.lock_ticks = 0;
-        self.update_ghost();
-    }
-
     fn get_next_piece(&mut self) -> Piece {
         let next = self.next_pieces[0];
         for i in 0..self.next_pieces.len() - 1 {
@@ -349,18 +360,37 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
         next
     }
 
+    fn new_piece(&mut self, piece: Piece) {
+        self.current_piece = piece.spawn();
+        if self.current_piece.collides(&self.playfield_mask) {
+            // Lock out
+            self.game_ended = true;
+        }
+        self.movement = 0.0;
+        self.lock_ticks = 0;
+        self.lock_tries = 0;
+        self.update_ghost();
+    }
+
+    fn reset_lock(&mut self) {
+        if self.lock_ticks > 0 && self.lock_tries < self.ruleset.lock_resets {
+            self.lock_tries += 1;
+            self.lock_ticks = 0;
+        }
+    }
+
     pub fn hold(&mut self) {
         if !self.hold_lock {
             let new_piece = if let Some(held) = self.held_piece {
-                held.spawn()
+                held
             } else {
-                self.get_next_piece().spawn()
+                self.get_next_piece()
             };
 
             self.held_piece = Some(self.current_piece.piece);
-            self.current_piece = new_piece;
+            
             self.update_ghost();
-
+            self.new_piece(new_piece);
             self.hold_lock = true;
         }
     }
@@ -371,7 +401,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             if self.current_piece.collides(&self.playfield_mask) {
                 self.current_piece.x += 1;
             } else {
-                self.lock_ticks = 0;
+                self.reset_lock();
                 self.update_ghost();
             }
         }
@@ -383,7 +413,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             if self.current_piece.collides(&self.playfield_mask) {
                 self.current_piece.x -= 1;
             } else {
-                self.lock_ticks = 0;
+                self.reset_lock();
                 self.update_ghost();
             }
         }
@@ -395,7 +425,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             .rotate_left(&self.current_piece, &self.playfield_mask)
         {
             self.current_piece = rot;
-            self.lock_ticks = 0;
+            self.reset_lock();
             self.update_ghost();
         }
     }
@@ -406,7 +436,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             .rotate_right(&self.current_piece, &self.playfield_mask)
         {
             self.current_piece = rot;
-            self.lock_ticks = 0;
+            self.reset_lock();
             self.update_ghost();
         }
     }
@@ -494,5 +524,17 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
                 }
             }
         }
+
+        // If the piece will lock since it can't move down more
+        if self.ghost_piece.y == self.current_piece.y {
+            self.lock_ticks += 1;
+        }
+
+        if self.lock_ticks >= self.ruleset.lock_delay {
+            let piece = self.current_piece.clone();
+            self.lock_piece(&piece);
+        }
+
+        // Check tetris
     }
 }

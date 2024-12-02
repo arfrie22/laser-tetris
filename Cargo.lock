@@ -1595,7 +1595,6 @@ dependencies = [
  "display-interface",
  "display-interface-spi",
  "embassy-embedded-hal 0.2.0",
- "embassy-executor",
  "embassy-futures",
  "embassy-nrf",
  "embassy-sync 0.6.1",
@@ -2908,7 +2907,6 @@ dependencies = [
 name = "tetris"
 version = "0.1.0"
 dependencies = [
- "embassy-time",
  "rand",
 ]
 
