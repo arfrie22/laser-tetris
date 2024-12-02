@@ -1,5 +1,7 @@
 #![no_std]
 
+use micromath::F32Ext;
+
 use random::Randomizer;
 use rotate::Rotate;
 

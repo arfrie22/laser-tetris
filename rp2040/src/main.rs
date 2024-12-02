@@ -74,7 +74,7 @@ async fn main(_spawner: Spawner) {
     loop {
         for x in 0..10 {
             for y in 0..20 {
-                draw_pixel(&mut data, x + 6, y, game.board()[y as usize][x as usize]);
+                draw_pixel(&mut data, x + 7, y + 2, game.board()[y as usize][x as usize]);
             }
         }
 
@@ -83,20 +83,20 @@ async fn main(_spawner: Spawner) {
         c.0 /= 2;
         c.1 /= 2;
         c.2 /= 2;
-        draw_mask(&mut data, 20, 6, p.y(), p.mask(), c);
+        draw_mask(&mut data, 20, 7, p.y() + 2, p.mask(), c);
 
         let p = game.current_piece();
-        draw_mask(&mut data, 20, 6, p.y(), p.mask(), p.color());
+        draw_mask(&mut data, 20, 7, p.y() + 2, p.mask(), p.color());
 
         for x in 0..4 {
             for y in 0..4 {
-                draw_pixel(&mut data, x, 16 + y, (0, 0, 0));
+                draw_pixel(&mut data, x + 1, 18 + y, (0, 0, 0));
             }
         }
 
         if let Some(held) = game.held_piece() {
             let p = CurrentPiece::new(held, 0, 0, tetris::Rotation::Rotate0);
-            draw_mask(&mut data, 24, 0, 16, p.mask(), p.color());
+            draw_mask(&mut data, 24, 1, 18, p.mask(), p.color());
         }
 
         for (i, piece) in game.next_pieces().iter().enumerate() {
