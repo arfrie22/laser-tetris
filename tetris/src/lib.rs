@@ -422,7 +422,9 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     pub fn set_left(&mut self, state: bool) {
         if state != self.left_held {
-            self.move_left();
+            if state {
+                self.move_left();
+            }
             self.das_ticks = 0;
             self.das_movement = 0.0;
             self.left_held = state;
@@ -440,7 +442,9 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
 
     pub fn set_right(&mut self, state: bool) {
         if state != self.right_held {
-            self.move_right();
+            if state {
+                self.move_right();
+            }
             self.das_ticks = 0;
             self.das_movement = 0.0;
             self.right_held = state;
