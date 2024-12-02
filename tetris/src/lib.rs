@@ -1,4 +1,4 @@
-//#![no_std]
+#![no_std]
 
 use random::Randomizer;
 use rotate::Rotate;
@@ -514,12 +514,10 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             self.line_clear_count += self.line_clears.1 as u32;
             self.line_clear_total += self.line_clears.1 as u32;
             let limit = self.ruleset.line_clear_constant + (self.level * self.ruleset.line_clear_coeff);
-            println!("gravtiy: {}, limit: {}, count: {}", self.gravity, limit, self.line_clear_count);
             if self.line_clear_count >= limit {
                 self.line_clear_count = 0;
                 self.level += 1;
                 self.update_gravity();
-                println!("gravtiy: {}", self.gravity);
             }
 
             for i in (0..self.line_clears.1).rev() {
