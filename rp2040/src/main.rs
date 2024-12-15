@@ -8,7 +8,7 @@ use defmt::*;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::clocks::{clk_sys_freq, RoscRng};
-use embassy_rp::gpio::Output;
+use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::PIO0;
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_time::{Duration, Instant, Ticker, Timer};
@@ -29,6 +29,46 @@ bind_interrupts!(struct Irqs {
 // 5760/144 = 40
 //  40 us / led
 const NUM_LEDS: usize = 144;
+
+enum PinResult {
+    RisingEdge,
+    FallingEdge,
+    On,
+    Off,
+}
+
+const DEBOUNCE: Duration = Duration::from_millis(30);
+
+struct Button<'d> {
+    input: Input<'d>,
+    last_update: Instant,
+    last_state: bool
+}
+
+impl<'d> Button<'d> {
+    pub fn new(pin: Input<'d>) -> Self {
+        Self { input: pin, last_update: Instant::now(), last_state: false }
+    }
+
+    pub fn get_state(&mut self) -> PinResult {
+        let s = self.input.is_low();
+        if s != self.last_state && self.last_update.elapsed() > DEBOUNCE {
+            self.last_state = s;
+            self.last_update = Instant::now();
+            if s {
+                PinResult::RisingEdge
+            } else {
+                PinResult::FallingEdge
+            }
+        } else {
+            if self.last_state {
+                PinResult::On
+            } else {
+                PinResult::Off
+            }
+        }
+    }
+}
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -64,6 +104,15 @@ async fn main(_spawner: Spawner) {
     let rng = RandomGenerator::new(RoscRng);
     let mut game = Game::new(rng, rot);
 
+    let mut left_pin = Button::new(Input::new(p.PIN_15, embassy_rp::gpio::Pull::Up));
+    let mut soft_drop_pin = Button::new(Input::new(p.PIN_14, embassy_rp::gpio::Pull::Up));
+    let mut right_pin = Button::new(Input::new(p.PIN_13, embassy_rp::gpio::Pull::Up));
+    
+    let mut hold_pin = Button::new(Input::new(p.PIN_12, embassy_rp::gpio::Pull::Up));
+    let mut rotate_left_pin = Button::new(Input::new(p.PIN_11, embassy_rp::gpio::Pull::Up));
+    let mut rotate_right_pin = Button::new(Input::new(p.PIN_10, embassy_rp::gpio::Pull::Up));
+    let mut drop_pin = Button::new(Input::new(p.PIN_9, embassy_rp::gpio::Pull::Up));
+
     // Loop forever making RGB  values and pushing them out to the WS2812.
     for i in 0..4 {
         for l in 0..NUM_LEDS {
@@ -83,10 +132,10 @@ async fn main(_spawner: Spawner) {
         c.0 /= 2;
         c.1 /= 2;
         c.2 /= 2;
-        draw_mask(&mut data, 20, 7, p.y() + 2, p.mask(), c);
+        draw_mask(&mut data, 22, 7, p.y() + 2, p.mask(), c);
 
         let p = game.current_piece();
-        draw_mask(&mut data, 20, 7, p.y() + 2, p.mask(), p.color());
+        draw_mask(&mut data, 22, 7, p.y() + 2, p.mask(), p.color());
 
         for x in 0..4 {
             for y in 0..4 {
@@ -107,6 +156,45 @@ async fn main(_spawner: Spawner) {
                 }
             }
             draw_mask(&mut data, 24, 19, 20 - (3 * i as u32), p.mask(), p.color());
+        }
+
+
+        match left_pin.get_state() {
+            PinResult::RisingEdge => game.set_left(true),
+            PinResult::FallingEdge => game.set_left(false),
+            _ => {},
+        }
+
+        match right_pin.get_state() {
+            PinResult::RisingEdge => game.set_right(true),
+            PinResult::FallingEdge => game.set_right(false),
+            _ => {},
+        }
+
+        match soft_drop_pin.get_state() {
+            PinResult::RisingEdge => game.set_drop(true),
+            PinResult::FallingEdge => game.set_drop(false),
+            _ => {},
+        }
+
+        match hold_pin.get_state() {
+            PinResult::RisingEdge => game.hold(),
+            _ => {},
+        }
+
+        match rotate_left_pin.get_state() {
+            PinResult::RisingEdge => game.rotate_left(),
+            _ => {},
+        }
+
+        match rotate_right_pin.get_state() {
+            PinResult::RisingEdge => game.rotate_right(),
+            _ => {},
+        }
+
+        match drop_pin.get_state() {
+            PinResult::RisingEdge => game.hard_drop(),
+            _ => {},
         }
 
         ws2812.write(&data).await;

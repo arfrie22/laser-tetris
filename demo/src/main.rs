@@ -72,10 +72,10 @@ fn main() -> Result<(), Error> {
             c.0 /= 2;
             c.1 /= 2;
             c.2 /= 2;
-            draw_mask(frame, 20, 7, p.y() + 2, p.mask(), c);
+            draw_mask(frame, 22, 7, p.y() + 2, p.mask(), c);
 
             let p = game.current_piece();
-            draw_mask(frame, 20, 7, p.y() + 2, p.mask(), p.color());
+            draw_mask(frame, 22, 7, p.y() + 2, p.mask(), p.color());
 
             for x in 0..4 {
                 for y in 0..4 {
