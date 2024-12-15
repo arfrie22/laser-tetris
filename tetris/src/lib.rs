@@ -538,6 +538,7 @@ impl<RNG: Randomizer, ROT: Rotate> Game<RNG, ROT> {
             }
 
             self.line_clears.1 = 0;
+            self.update_ghost();
             return;
         }
 
