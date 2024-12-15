@@ -11,6 +11,7 @@ use embassy_rp::clocks::{clk_sys_freq, RoscRng};
 use embassy_rp::gpio::{Input, Output};
 use embassy_rp::peripherals::PIO0;
 use embassy_rp::pio::{InterruptHandler, Pio};
+use embassy_rp::watchdog::Watchdog;
 use embassy_time::{Duration, Instant, Ticker, Timer};
 use fixed::types::U24F8;
 use log::info;
@@ -120,7 +121,7 @@ async fn main(_spawner: Spawner) {
         }
     }
     let mut ticker = Ticker::every(Duration::from_millis(16));
-    loop {
+    while game.running() {
         for x in 0..10 {
             for y in 0..20 {
                 draw_pixel(&mut data, x + 7, y + 2, game.board()[y as usize][x as usize]);
@@ -199,8 +200,12 @@ async fn main(_spawner: Spawner) {
 
         ws2812.write(&data).await;
         game.update();
+
         ticker.next().await;
     }
+
+    let mut watchdog = Watchdog::new(p.WATCHDOG);
+    watchdog.trigger_reset();
 }
 
 
